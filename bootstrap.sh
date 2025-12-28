@@ -62,6 +62,17 @@ yes_no() {
     done
 }
 
+cleanup() {
+    if [[ -n "$TMP" && -d "$TMP" ]]; then
+        p "\n→ Cleaning up temporary directory at $TMP"
+        rm -rf "$TMP"
+        p "→ Cleanup complete"
+        exit 0
+    fi
+}
+
+trap cleanup EXIT INT TERM
+
 p "→ ${BOLD}${RED}justjcurtis.dev${RESET}${BOLD} setup bootstrap"
 p "→ ${PURPLE}https://github.com/justjcurtis/setup"
 
@@ -80,8 +91,4 @@ if yes_no "Would you like to add fries?" "y"; then
 fi
 
 p "You selected value: ${options[selected_index]}${ending}"
-
-p "→ Cleaning up..."
-rm -rf "$TMP"
-p "→ Removed temporary directory"
 
