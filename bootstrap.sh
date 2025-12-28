@@ -13,22 +13,22 @@ PURPLE="\033[35m"
 PINK="\033[95m"
 
 p() {
-    printf "$1${RESET}\n" 
+    printf "%b\n" "$1${RESET}"
 }
 
 select_option() {
-    local -n _opts=$1
+    local _opts_name=$1
     local question=$2
     local choice
+    eval "local _opts=(\"\${${_opts_name}[@]}\")"
 
-    p "${ITALIC}$question" 
+    p "${ITALIC}$question"
     for i in "${!_opts[@]}"; do
         printf "${BOLD}${ITALIC}%d)${RESET} %s\n" $((i + 1)) "${_opts[i]}"
     done
 
     while true; do
-        read -rp "Enter choice [1-${#_opts[@]}]: " choice
-
+        read -rp "Enter choice [1-${#_opts[@]}]: " choice < /dev/tty
         if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#_opts[@]} )); then
             return $((choice - 1))
         else
@@ -43,39 +43,30 @@ yes_no() {
     local response
 
     local brackets="[y/n]"
-    if [[ "$default_answer" == "y" ]]; then
-        brackets="[Y/n]"
-    elif [[ "$default_answer" == "n" ]]; then
-        brackets="[y/N]"
-    fi
+    [[ "$default_answer" == "y" ]] && brackets="[Y/n]"
+    [[ "$default_answer" == "n" ]] && brackets="[y/N]"
 
     while true; do
-        read -rp "$question $brackets: " response
+        read -rp "$question $brackets: " response < /dev/tty
         case "$response" in
             [Yy]* ) return 0 ;;
             [Nn]* ) return 1 ;;
+            "" )
+                [[ "$default_answer" == "y" ]] && return 0
+                [[ "$default_answer" == "n" ]] && return 1
+                ;;
             * )
-                if [[ -n "$default_answer" ]]; then
-                    if [[ "$default_answer" == "y" ]]; then
-                        return 0
-                    else
-                        return 1
-                    fi
-                else
-                    printf "Please answer yes or no.\n"
-                fi
+                printf "Please answer yes or no.\n"
                 ;;
         esac
     done
 }
 
-
 p "→ ${BOLD}${RED}justjcurtis.dev${RESET}${BOLD} setup bootstrap"
 p "→ ${PURPLE}https://github.com/justjcurtis/setup"
 
-
 TMP="$(mktemp -d)"
-cd "$TMP"
+cd "$TMP" || exit 1
 
 p "→ Made temporary directory at $TMP"
 
@@ -91,6 +82,6 @@ fi
 p "You selected value: ${options[selected_index]}${ending}"
 
 p "→ Cleaning up..."
-rm -rf "$TMP\n"
+rm -rf "$TMP"
 p "→ Removed temporary directory"
 
