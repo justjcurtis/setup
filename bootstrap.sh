@@ -64,11 +64,62 @@ yes_no() {
 
 cleanup() {
     if [[ -n "$TMP" && -d "$TMP" ]]; then
-        p "\n→ Cleaning up temporary directory at $TMP"
+        p "\n→ Cleaning up..."
         rm -rf "$TMP"
+        tput cnorm
         p "→ Cleanup complete"
         exit 0
     fi
+}
+
+jk_arrow_select() {
+    local prompt="$1"
+    shift
+    local options=("$@")
+    local selected=0
+
+    tput civis 
+    while true; do
+        p "${BOLD}$prompt${RESET}"
+        for i in "${!options[@]}"; do
+            if [[ $i -eq $selected ]]; then
+                printf "  ${GREEN}> %s${RESET}\n" "${options[i]}"
+            else
+                printf "    %s\n" "${options[i]}"
+            fi
+        done
+
+        read -rsn1 input < /dev/tty
+        case "$input" in
+            $'\x1b') # Escape sequence
+                read -rsn2 -t 0.1 input2 < /dev/tty
+                input+="$input2"
+                ;;
+        esac
+
+        case "$input" in
+             j)
+                ((selected++))
+                if ((selected >= ${#options[@]})); then selected=0; fi
+                ;;
+             k)
+                ((selected--))
+                if ((selected < 0)); then selected=$((${#options[@]} - 1)); fi
+                ;;
+            $'\x1b[A') # Up arrow
+                ((selected--))
+                if ((selected < 0)); then selected=$((${#options[@]} - 1)); fi
+                ;;
+            $'\x1b[B') # Down arrow
+                ((selected++))
+                if ((selected >= ${#options[@]})); then selected=0; fi
+                ;;
+            "") # Enter key
+                tput cnorm
+                return $selected
+                ;;
+        esac
+    done
 }
 
 trap cleanup EXIT INT TERM
@@ -82,7 +133,9 @@ cd "$TMP" || exit 1
 p "→ Made temporary directory at $TMP"
 
 options=("Burger" "Kebab" "Pizza")
-select_option options "Pick a meal:"
+# select_option options "Pick a meal:"
+# selected_index=$?
+jk_arrow_select "Pick a meal:" "${options[@]}"
 selected_index=$?
 
 ending=""
