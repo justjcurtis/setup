@@ -62,27 +62,34 @@ yes_no() {
     done
 }
 
-cleanup() {
-    if [[ -n "$TMP" && -d "$TMP" ]]; then
-        p "\n→ Cleaning up..."
-        rm -rf "$TMP"
-        tput cnorm
-        p "→ Cleanup complete"
-        exit 0
-    fi
-}
-
 jk_arrow_select() {
     local prompt="$1"
     shift
     local options=("$@")
     local selected=0
+    local lines=$(( ${#options[@]} + 1 )) # prompt + options
 
-    tput civis 
+    tput civis
+    tput sc  # save cursor position
+
+    cleanup_arrow() {
+        tput rc
+        tput cnorm
+    }
+    trap cleanup_arrow EXIT INT TERM
+
     while true; do
+        # Restore cursor and redraw in-place
+        tput rc
+        for ((i=0; i<lines; i++)); do
+            tput el
+            printf "\n"
+        done
+        tput cuu "$lines"
+
         p "${BOLD}$prompt${RESET}"
         for i in "${!options[@]}"; do
-            if [[ $i -eq $selected ]]; then
+            if (( i == selected )); then
                 printf "  ${GREEN}> %s${RESET}\n" "${options[i]}"
             else
                 printf "    %s\n" "${options[i]}"
@@ -91,35 +98,39 @@ jk_arrow_select() {
 
         read -rsn1 input < /dev/tty
         case "$input" in
-            $'\x1b') # Escape sequence
+            $'\x1b')
                 read -rsn2 -t 0.1 input2 < /dev/tty
                 input+="$input2"
                 ;;
         esac
 
         case "$input" in
-             j)
+            j|$'\x1b[B')
                 ((selected++))
-                if ((selected >= ${#options[@]})); then selected=0; fi
+                ((selected >= ${#options[@]})) && selected=0
                 ;;
-             k)
+            k|$'\x1b[A')
                 ((selected--))
-                if ((selected < 0)); then selected=$((${#options[@]} - 1)); fi
+                ((selected < 0)) && selected=$((${#options[@]} - 1))
                 ;;
-            $'\x1b[A') # Up arrow
-                ((selected--))
-                if ((selected < 0)); then selected=$((${#options[@]} - 1)); fi
-                ;;
-            $'\x1b[B') # Down arrow
-                ((selected++))
-                if ((selected >= ${#options[@]})); then selected=0; fi
-                ;;
-            "") # Enter key
+            "")
                 tput cnorm
-                return $selected
+                trap - EXIT INT TERM
+                return "$selected"
                 ;;
         esac
     done
+}
+
+
+cleanup() {
+    if [[ -n "$TMP" && -d "$TMP" ]]; then
+        p "\n→ Cleaning up..."
+        rm -rf "$TMP"
+        tput cnorm
+        p "→ Cleanup complete"
+        exit 0
+    fi
 }
 
 trap cleanup EXIT INT TERM
