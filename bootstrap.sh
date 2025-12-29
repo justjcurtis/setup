@@ -30,6 +30,10 @@ success() {
     p "${BOLD}${GREEN}✔ $1"
 }
 
+warning() {
+    p "${BOLD}${YELLOW}⚠ $1"
+}
+
 error() {
     p "${BOLD}${RED}✖ $1"
 }
