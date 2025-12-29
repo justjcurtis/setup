@@ -187,15 +187,17 @@ cd "$TMP" || exit 1
 
 info "Made temporary directory at $TMP"
 
-options=("Burger" "Kebab" "Pizza")
-select_option options "Pick a meal:"
-jk_arrow_select "Pick a meal:" "${options[@]}"
-selected_index=$?
+drinks=("Water" "Coke" "Juice" "Beer" "Wine")
+meals=("Burger" "Kebab" "Pizza")
+jk_arrow_select "Pick a meal:" "${meals[@]}"
+selected_meal_index=$?
+select_option drinks "Pick a drink:"
+selected_drink_index=$?
 
 ending=""
 if yes_no "Would you like to add fries?" "y"; then
-    ending=" with fries"
+    ending=" and fries"
 fi
 
-p "You selected: ${BOLD}${GREEN}${options[selected_index]}${ending}"
+p "You selected: ${BOLD}${GREEN}${meals[selected_meal_index]} with a ${drinks[selected_drink_index]}${ending}"
 
