@@ -67,34 +67,63 @@ jk_arrow_select() {
     shift
     local options=("$@")
     local selected=0
-    local lines=$(( ${#options[@]} + 1 )) # prompt + options
+    local menu_lines=${#options[@]}
 
     tput civis
-    tput sc  # save cursor position
 
-    cleanup_arrow() {
-        tput rc
-        tput cnorm
+    # Print prompt
+    p "${BOLD}${prompt}${RESET}"
+
+    # Initial menu
+    for opt in "${options[@]}"; do
+        p "    $opt"
+    done
+
+    redraw_menu() {
+        # Move to top of menu
+        tput cuu "$menu_lines"
+
+        for i in "${!options[@]}"; do
+            tput el
+            if (( i == selected )); then
+                p "  ${GREEN}> ${options[i]}${RESET}"
+            else
+                p "    ${options[i]}"
+            fi
+        done
     }
-    trap cleanup_arrow EXIT INT TERM
 
-    while true; do
-        # Restore cursor and redraw in-place
-        tput rc
-        for ((i=0; i<lines; i++)); do
+    finish_select() {
+        # Move to top of menu
+        tput cuu "$menu_lines"
+
+        # Clear menu
+        for ((i=0; i<menu_lines; i++)); do
             tput el
             printf "\n"
         done
-        tput cuu "$lines"
 
-        p "${BOLD}$prompt${RESET}"
-        for i in "${!options[@]}"; do
-            if (( i == selected )); then
-                printf "  ${GREEN}> %s${RESET}\n" "${options[i]}"
-            else
-                printf "    %s\n" "${options[i]}"
-            fi
-        done
+        # Move to prompt line
+        tput cuu $((menu_lines + 1))
+        tput el
+
+        # Rewrite prompt with selection
+        p "${BOLD}${prompt}${RESET} ${GREEN}${options[selected]}"
+
+        tput cnorm
+    }
+
+    abort_ctrl_c() {
+        # Move cursor below menu, leave everything intact
+        printf "\n"
+        tput cnorm
+        exit 130
+    }
+
+    trap abort_ctrl_c INT
+
+    while true; do
+        redraw_menu
 
         read -rsn1 input < /dev/tty
         case "$input" in
@@ -107,28 +136,25 @@ jk_arrow_select() {
         case "$input" in
             j|$'\x1b[B')
                 ((selected++))
-                ((selected >= ${#options[@]})) && selected=0
+                ((selected >= menu_lines)) && selected=0
                 ;;
             k|$'\x1b[A')
                 ((selected--))
-                ((selected < 0)) && selected=$((${#options[@]} - 1))
+                ((selected < 0)) && selected=$((menu_lines - 1))
                 ;;
             "")
-                tput cnorm
-                trap - EXIT INT TERM
+                finish_select
+                trap - INT
                 return "$selected"
                 ;;
         esac
     done
 }
 
-
 cleanup() {
     if [[ -n "$TMP" && -d "$TMP" ]]; then
-        p "\n→ Cleaning up..."
         rm -rf "$TMP"
         tput cnorm
-        p "→ Cleanup complete"
         exit 0
     fi
 }
