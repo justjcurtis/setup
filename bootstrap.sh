@@ -147,7 +147,7 @@ jk_arrow_select() {
         read -rsn1 input < /dev/tty
         case "$input" in
             $'\x1b')
-                read -rsn2 -t 0.1 input2 < /dev/tty
+                read -rsn2 input2 < /dev/tty
                 input+="$input2"
                 ;;
         esac
