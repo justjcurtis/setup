@@ -4,16 +4,34 @@ RESET="\033[0m"
 BOLD="\033[1m"
 ITALIC="\033[3m"
 UNDERLINE="\033[4m"
+DIM="\033[2m"
 RED="\033[31m"
-BLUE="\033[34m"
 GREEN="\033[32m"
 YELLOW="\033[33m"
-CYAN="\033[36m"
+BLUE="\033[34m"
 PURPLE="\033[35m"
+CYAN="\033[36m"
 PINK="\033[95m"
+
+if [[ -n "$NO_COLOR" || ! -t 1 ]]; then
+    RESET="" BOLD="" ITALIC="" UNDERLINE="" DIM=""
+    RED="" GREEN="" YELLOW="" BLUE="" PURPLE="" CYAN=""  PINK=""
+fi
 
 p() {
     printf "%b\n" "$1${RESET}"
+}
+
+info() {
+    p "${BOLD}${BLUE}→ $1"
+}
+
+success() {
+    p "${BOLD}${GREEN}✔ $1"
+}
+
+error() {
+    p "${BOLD}${RED}✖ $1"
 }
 
 select_option() {
@@ -46,7 +64,7 @@ select_option() {
             return "$selected_index"
         else
             total_lines=$((total_lines + 2))
-            p "${BOLD}${RED}Invalid selection. Try again."
+            error "Invalid selection. Try again."
         fi
     done
 }
@@ -70,7 +88,7 @@ yes_no() {
                 [[ "$default_answer" == "n" ]] && return 1
                 ;;
             * )
-                p "${BOLD}${RED}Please answer yes (y) or no (n)."
+                error "Please answer yes (y) or no (n)."
                 ;;
         esac
     done
@@ -157,13 +175,13 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-p "→ ${BOLD}${RED}justjcurtis.dev${RESET}${BOLD} setup bootstrap"
-p "→ ${PURPLE}https://github.com/justjcurtis/setup"
+info "${RED}justjcurtis.dev${RESET}${BOLD} setup bootstrap"
+info "${PURPLE}https://github.com/justjcurtis/setup"
 
 TMP="$(mktemp -d)"
 cd "$TMP" || exit 1
 
-p "→ Made temporary directory at $TMP"
+info "Made temporary directory at $TMP"
 
 options=("Burger" "Kebab" "Pizza")
 select_option options "Pick a meal:"
@@ -175,5 +193,5 @@ if yes_no "Would you like to add fries?" "y"; then
     ending=" with fries"
 fi
 
-p "You selected value: ${options[selected_index]}${ending}"
+p "You selected: ${BOLD}${GREEN}${options[selected_index]}${ending}"
 
