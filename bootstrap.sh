@@ -22,17 +22,31 @@ select_option() {
     local choice
     eval "local _opts=(\"\${${_opts_name}[@]}\")"
 
+    local menu_lines=${#_opts[@]}
+    local total_lines=$((menu_lines + 2))
+
     p "${ITALIC}$question"
+
     for i in "${!_opts[@]}"; do
-        printf "${BOLD}${ITALIC}%d)${RESET} %s\n" $((i + 1)) "${_opts[i]}"
+        p "${BOLD}${ITALIC}$((i+1)))${RESET} ${_opts[i]}"
     done
 
     while true; do
-        read -rp "Enter choice [1-${#_opts[@]}]: " choice < /dev/tty
-        if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#_opts[@]} )); then
-            return $((choice - 1))
+        read -rp "Enter choice [1-${menu_lines}]: " choice < /dev/tty
+        if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= menu_lines )); then
+            local selected_index=$((choice - 1))
+            local selected_value="${_opts[selected_index]}"
+            tput cuu "$total_lines"
+            for ((i=0; i<total_lines; i++)); do
+                tput el
+                printf "\n"
+            done
+            tput cuu "$total_lines"
+            p "${ITALIC}${question}${RESET}${GREEN} $selected_value"
+            return "$selected_index"
         else
-            printf "Invalid selection. Try again.\n"
+            total_lines=$((total_lines + 2))
+            p "${BOLD}${RED}Invalid selection. Try again."
         fi
     done
 }
@@ -56,7 +70,7 @@ yes_no() {
                 [[ "$default_answer" == "n" ]] && return 1
                 ;;
             * )
-                printf "Please answer yes or no.\n"
+                p "${BOLD}${RED}Please answer yes (y) or no (n)."
                 ;;
         esac
     done
@@ -70,19 +84,13 @@ jk_arrow_select() {
     local menu_lines=${#options[@]}
 
     tput civis
-
-    # Print prompt
     p "${BOLD}${prompt}${RESET}"
-
-    # Initial menu
     for opt in "${options[@]}"; do
         p "    $opt"
     done
 
     redraw_menu() {
-        # Move to top of menu
         tput cuu "$menu_lines"
-
         for i in "${!options[@]}"; do
             tput el
             if (( i == selected )); then
@@ -94,37 +102,26 @@ jk_arrow_select() {
     }
 
     finish_select() {
-        # Move to top of menu
         tput cuu "$menu_lines"
-
-        # Clear menu
         for ((i=0; i<menu_lines; i++)); do
             tput el
-            printf "\n"
+            p ""
         done
-
-        # Move to prompt line
         tput cuu $((menu_lines + 1))
         tput el
-
-        # Rewrite prompt with selection
         p "${BOLD}${prompt}${RESET} ${GREEN}${options[selected]}"
-
         tput cnorm
     }
 
     abort_ctrl_c() {
-        # Move cursor below menu, leave everything intact
-        printf "\n"
+        p ""
         tput cnorm
         exit 130
     }
 
     trap abort_ctrl_c INT
-
     while true; do
         redraw_menu
-
         read -rsn1 input < /dev/tty
         case "$input" in
             $'\x1b')
@@ -132,7 +129,6 @@ jk_arrow_select() {
                 input+="$input2"
                 ;;
         esac
-
         case "$input" in
             j|$'\x1b[B')
                 ((selected++))
@@ -170,8 +166,7 @@ cd "$TMP" || exit 1
 p "→ Made temporary directory at $TMP"
 
 options=("Burger" "Kebab" "Pizza")
-# select_option options "Pick a meal:"
-# selected_index=$?
+select_option options "Pick a meal:"
 jk_arrow_select "Pick a meal:" "${options[@]}"
 selected_index=$?
 
