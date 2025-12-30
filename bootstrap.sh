@@ -47,7 +47,7 @@ select_option() {
     local menu_lines=${#_opts[@]}
     local total_lines=$((menu_lines + 2))
 
-    p "${ITALIC}$question"
+    p "$question"
 
     for i in "${!_opts[@]}"; do
         p "${BOLD}${ITALIC}$((i+1)))${RESET} ${_opts[i]}"
@@ -64,7 +64,7 @@ select_option() {
                 printf "\n"
             done
             tput cuu "$total_lines"
-            p "${ITALIC}${question}${RESET}${GREEN} $selected_value"
+            p "${question}${RESET}${GREEN} $selected_value"
             return "$selected_index"
         else
             total_lines=$((total_lines + 2))
@@ -83,13 +83,19 @@ yes_no() {
     [[ "$default_answer" == "n" ]] && brackets="[y/N]"
 
     while true; do
-        read -rp "$question $brackets: " response < /dev/tty
+        printf "$question ${RESET}${DIM}$brackets${RESET}:"
+        read -r response < /dev/tty
         case "$response" in
             [Yy]* ) return 0 ;;
             [Nn]* ) return 1 ;;
             "" )
-                [[ "$default_answer" == "y" ]] && return 0
-                [[ "$default_answer" == "n" ]] && return 1
+                if [[ "$default_answer" == "y" ]]; then
+                    return 0
+                elif [[ "$default_answer" == "n" ]]; then
+                    return 1
+                else
+                    error "Please answer yes (y) or no (n)."
+                fi
                 ;;
             * )
                 error "Please answer yes (y) or no (n)."
@@ -106,7 +112,7 @@ jk_arrow_select() {
     local menu_lines=${#options[@]}
 
     tput civis
-    p "${BOLD}${prompt}${RESET}"
+    p "${prompt}"
     for opt in "${options[@]}"; do
         p "    $opt"
     done
@@ -131,7 +137,7 @@ jk_arrow_select() {
         done
         tput cuu $((menu_lines + 1))
         tput el
-        p "${BOLD}${prompt}${RESET} ${GREEN}${options[selected]}"
+        p "${prompt}${RESET} ${GREEN}${options[selected]}"
         tput cnorm
     }
 
@@ -189,13 +195,13 @@ info "Made temporary directory at $TMP"
 
 drinks=("Water" "Coke" "Juice" "Beer" "Wine")
 meals=("Burger" "Kebab" "Pizza")
-jk_arrow_select "Pick a meal:" "${meals[@]}"
+jk_arrow_select "${BOLD}Pick a meal:" "${meals[@]}"
 selected_meal_index=$?
-select_option drinks "Pick a drink:"
+select_option drinks "${BOLD}Pick a drink:"
 selected_drink_index=$?
 
 ending=""
-if yes_no "Would you like to add fries?" "y"; then
+if yes_no "${BOLD}Would you like to add fries?"; then
     ending=" and fries"
 fi
 
